@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Beehive Clicker — Single File v1.6 (Forest & Resin)</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<audio id="bgm" preload="auto" loop></audio>
+<div id="dbgWatermark" style="position:fixed;inset:auto 12px 12px auto;opacity:.12;font-weight:900;font-size:42px;pointer-events:none;display:none">DEBUG</div>
+
+<header id="topbar" class="row wrap" aria-label="Top bar with resources and settings">
+  <div class="resources row wrap" style="flex:1 1 auto">
+    <div class="chip" id="saveStatus" aria-live="polite">—</div>
+    <div class="chip" id="apChip" data-tip="Ascension Points — earned on Ascend. Spend in AP Upgrades."><span class="icon">👑</span><span id="ap">0</span> AP</div>
+    <div class="chip" id="ecChip" data-tip="Elder Crowns — permanent global +1% each, gained by crowning spent AP."><span class="icon">👑</span><span id="ec">0</span> EC</div>
+
+    <span id="classicRes">
+      <div class="chip cr" data-k="nectar" data-tip="Nectar\nClick Giant Flower / Forest Scouts.\nUse: feed Press, some upgrades."><span class="icon">🌼</span><span>Nectar:</span> <b class="mono" id="nectar">0</b> <small class="muted" id="nectarRate"></small></div>
+      <div class="chip cr" data-k="honey" data-tip="Honey\nFrom Press.\nUse: core spend."><span class="icon">🍯</span><span>Honey:</span> <b class="mono" id="honey">0</b> <small class="muted" id="honeyRate"></small></div>
+      <div class="chip cr" data-k="pollen"><span class="icon">🟡</span><span>Pollen:</span> <b class="mono" id="pollen">0</b> <small class="muted" id="pollenRate"></small></div>
+      <div class="chip cr" data-k="wax"><span class="icon">🕯️</span><span>Wax:</span> <b class="mono" id="wax">0</b> <small class="muted" id="waxRate"></small></div>
+      <div class="chip cr" data-k="royalJelly"><span class="icon">👑</span><span>Royal Jelly:</span> <b class="mono" id="royalJelly">0</b> <small class="muted" id="rjRate"></small></div>
+      <div class="chip cr" data-k="propolis"><span class="icon">🟤</span><span>Propolis:</span> <b class="mono" id="propolis">0</b> <small class="muted" id="propRate"></small></div>
+      <div class="chip cr" data-k="resin" data-tip="Resin (Forest)\nTree Tappers.\nUse: boosts Press via Resin Filter, makes Wax."><span class="icon">🟡</span><span>Resin:</span> <b class="mono" id="resin">0</b> <small class="muted" id="resinRate"></small></div>
+      <div class="chip cr" data-k="amber" data-tip="Amber (Forest)\nAmber Miners.\nUse: powerful buffs via Amber Forge."><span class="icon">🟠</span><span>Amber:</span> <b class="mono" id="amber">0</b> <small class="muted" id="amberRate"></small></div>
+    </span>
+
+    <span id="altRes" class="row wrap"></span>
+    <div class="chip" id="worldCurrencyChip" hidden><span class="icon">🗺️</span><span id="worldCurrencyName">Realm Tokens:</span> <b class="mono" id="worldCurrency">0</b> <small class="muted" id="worldRate"></small></div>
+  </div>
+
+  <div class="row wrap" style="align-items:center">
+    <button id="btnWorlds" class="pill" aria-label="Open worlds browser" data-tip="Browse and enter worlds">🌍 Worlds</button>
+    <button id="btnHives" class="pill" aria-label="Manage Hives" data-tip="Open Hives Manager">🐝 Hives</button>
+    <button id="btnAchievements" class="pill" aria-label="Achievements" data-tip="Browse achievements & buffs">🏆</button>
+    <button id="btnAscend" class="accent" aria-label="Ascend (prestige)" data-tip="Ascend to earn AP and reset world">Ascend</button>
+    <button id="btnCoronate" class="pill" aria-label="Royal Coronation" data-tip="Convert spent AP into Elder Crowns">Coronation</button>
+    <button id="btnSettings" class="pill" aria-label="Open settings">⚙️</button>
+    <button id="btnNotes" class="pill" aria-label="Changelog & Notes">📜</button>
+    <button id="btnDebug" class="pill" style="display:none">🛠️ Debug</button>
+  </div>
+</header>
+
+<main id="layout" aria-live="polite">
+  <!-- LEFT: Clicker -->
+  <section id="clicker" class="panel" aria-label="Flower clicker and click upgrades">
+    <h2 id="clickerTitle">Giant Flower <span class="sub">Click to gather <b>Nectar</b></span></h2>
+    <button id="flower" aria-label="Click flower to gain nectar">
+      <svg id="flowerSvg" viewBox="0 0 100 100" role="img" aria-label="Flower">
+        <defs>
+          <radialGradient id="gCore" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#fff"/>
+            <stop offset="100%" stop-color="#ffd166"/>
+          </radialGradient>
+          <linearGradient id="petalGrad" x1="0" x2="1">
+            <stop offset="0%" stop-color="#6fcf97"/>
+            <stop offset="100%" stop-color="#2a9d8f"/>
+          </linearGradient>
+        </defs>
+        <circle cx="50" cy="50" r="16" fill="url(#gCore)" stroke="#5e3" stroke-width="2"></circle>
+        <g id="petals" fill="url(#petalGrad)" stroke="#2a9d8f" stroke-width="1">
+          <ellipse cx="50" cy="15" rx="10" ry="8"/>
+          <ellipse cx="85" cy="40" rx="10" ry="8"/>
+          <ellipse cx="75" cy="80" rx="10" ry="8"/>
+          <ellipse cx="25" cy="80" rx="10" ry="8"/>
+          <ellipse cx="15" cy="40" rx="10" ry="8"/>
+        </g>
+      </svg>
+    </button>
+    <div class="row wrap" style="margin-top:8px">
+      <div class="chip" id="clickInfo">+<span id="clickGain">1</span> Nectar / click • <span id="critInfo">Crit 0%</span></div>
+      <div class="chip" id="pressInfo">Conversion: <span id="convEff">35%</span> • Press cap <span id="pressCap">0/s</span></div>
+    </div>
+    <div style="margin-top:8px">
+      <h3 style="margin:.4rem 0">Click Upgrades</h3>
+      <div id="clickUpgrades" class="grid"></div>
+    </div>
+  </section>
+
+  <!-- CENTER: Swarm -->
+  <section id="centerCanvas" class="panel" aria-label="Animated hive and swarm">
+    <h2>Hive & Swarm <span class="sub">Visualizes your activity</span></h2>
+    <div id="swarm" aria-hidden="true">
+      <svg id="swarmSvg" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <filter id="glow"><feGaussianBlur stdDeviation="1.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <linearGradient id="honeyGrad" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#fcbf49"/><stop offset="100%" stop-color="#f77f00"/>
+          </linearGradient>
+        </defs>
+        <g id="bees"></g>
+        <g id="honeycombs"></g>
+      </svg>
+    </div>
+    <div class="row wrap footer">
+      <div class="row wrap" style="gap:8px">
+        <label class="chip">FX
+          <select id="fxLevel"><option value="0">Low</option><option value="1" selected>Medium</option><option value="2">High</option></select>
+        </label>
+        <label class="chip">Number format
+          <select id="numFormat"><option value="eng" selected>Engineering</option><option value="sci">Scientific</option><option value="plain">Plain</option></select>
+        </label>
+        <label class="chip">Autosave
+          <label class="switch"><input id="autosaveToggle" type="checkbox" checked><span class="slider"></span></label>
+        </label>
+        <label class="chip">Reduced motion
+          <label class="switch"><input id="motionToggle" type="checkbox"><span class="slider"></span></label>
+        </label>
+        <label class="chip">SFX
+          <label class="switch"><input id="sfxToggle" type="checkbox" checked><span class="slider"></span></label>
+        </label>
+        <label class="chip">Music
+          <label class="switch"><input id="musicToggle" type="checkbox"><span class="slider"></span></label>
+        </label>
+        <button id="btnExport" class="small">Export</button>
+        <button id="btnImport" class="small">Import</button>
+        <input id="fileImport" type="file" accept=".bee,.json,text/plain" style="display:none" />
+        <button id="btnWipe" class="small danger">Wipe</button>
+      </div>
+      <div class="muted" id="version">v1.6</div>
+    </div>
+  </section>
+
+  <!-- RIGHT: Shop & Upgrades -->
+  <section id="shop" class="panel" aria-label="Generators and upgrades">
+    <h2>Shop <span class="sub">Generators & Upgrades</span></h2>
+    <div class="row wrap toolbar">
+      <span class="muted">Buy:</span>
+      <div class="qtyGroup" role="group">
+        <button class="small pill" data-qty="1">x1</button>
+        <button class="small pill" data-qty="10">x10</button>
+        <button class="small pill" data-qty="100">x100</button>
+        <button class="small pill" data-qty="max">Max</button>
+      </div>
+    </div>
+    <div class="scrollArea">
+      <div id="generatorList" class="list"></div>
+      <div style="margin-top:10px">
+        <div class="tabs" role="tablist">
+          <button class="tab" data-tab="global" role="tab" aria-selected="true">Global</button>
+          <button class="tab" data-tab="world" role="tab">World</button>
+          <button class="tab" data-tab="hive" role="tab">Hive</button>
+          <button class="tab" data-tab="generator" role="tab">Generator</button>
+          <button class="tab" data-tab="transmute" role="tab">Transmute</button>
+          <button class="tab" data-tab="research" role="tab">Research</button>
+          <button class="tab" data-tab="ap" role="tab">AP Upgrades</button>
+        </div>
+        <div id="upgradeLists">
+          <div class="list" id="upg-global"></div>
+          <div class="list" id="upg-world" hidden></div>
+          <div class="list" id="upg-hive" hidden></div>
+          <div class="list" id="upg-generator" hidden></div>
+          <div class="list" id="upg-transmute" hidden></div>
+          <div class="list" id="upg-research" hidden></div>
+          <div class="list" id="upg-ap" hidden></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Modale -->
+<dialog id="settingsModal"><div class="modal"><header><strong>Settings & Save</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body">
+  <div class="row wrap">
+    <button id="btnExport2">Export Save</button>
+    <button id="btnImport2">Import Save</button>
+    <button id="btnSnapshot">Safe Snapshot</button>
+    <button id="btnRestore">Restore Snapshot</button>
+  </div>
+  <textarea id="ioArea" style="width:100%;height:160px;margin-top:8px" placeholder="Save (encrypted) here for import/export"></textarea>
+  <div style="margin-top:10px" class="row wrap">
+    <label class="chip">Music URL <input id="musicUrl" style="width:260px" placeholder="https://...mp3"/></label>
+    <button id="btnSetMusic" class="small">Set music</button>
+    <span class="muted">Tip: wklej spokojny utwór (royalty-free).</span>
+  </div>
+</div></div></dialog>
+
+<dialog id="achievementsModal"><div class="modal"><header><strong>Achievements & Buffs</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body" id="achievementsBody"></div></div></dialog>
+
+<dialog id="hivesModal"><div class="modal"><header><strong>Hives Manager</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body" id="hivesBody"></div><div class="footer"><div id="hiveCost"></div><button id="btnBuyHive" class="good">Buy New Hive</button></div></div></dialog>
+
+<dialog id="ascendModal"><div class="modal"><header><strong>Ascend (Prestige)</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body" id="ascendBody"></div><div class="footer"><button id="confirmAscend" class="danger">Confirm Ascend</button></div></div></dialog>
+
+<dialog id="coronationModal"><div class="modal"><header><strong>Royal Coronation</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body" id="coronationBody"></div><div class="footer"><button id="confirmCoronation" class="danger">Crown Now</button></div></div></dialog>
+
+<dialog id="debugModal"><div class="modal"><header><strong>Debug Tools</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body" id="debugBody"></div></div></dialog>
+
+<dialog id="worldsModal">
+  <div class="modal">
+    <header><strong>World Browser</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header>
+    <div class="body" id="worldsBody"></div>
+  </div>
+</dialog>
+
+<dialog id="notesModal"><div class="modal"><header><strong>Changelog & Notes</strong><button class="small" onclick="this.closest('dialog').close()">✖</button></header><div class="body">
+  <h3>v1.6 — Forest & Resin</h3>
+  <ul>
+    <li>Classic: **Forest** z żywicą (Resin) i osobnymi generatorami.</li>
+    <li>Resin Filter: bonus do konwersji Press zależny od dostępnej żywicy i poziomu.</li>
+    <li>Per-world stany generatorów dla Classic (Meadow ≠ Forest).</li>
+    <li>Naprawy: research tab, realm mods per-świat, literówki genów.</li>
+    <li>Autosave co 20 s, wskaźnik „Unsaved…” → „Saved HH:MM:SS”.</li>
+  </ul>
+</div></div></dialog>
+<script src="app.js"></script>
+
+
+</body>
+</html>
+
