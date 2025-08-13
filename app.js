@@ -1,79 +1,4 @@
-(()=>{'use strict';
-/* ================= CONFIG ================= */
-const DIFFICULTY = { genCostScale:1.25, startConv:0.35, startPress:3, apExp:0.68 };
-const META = { version:'1.6', rngSeed:1337, offlineCapHoursClassic:6, offlineCapHoursRealm:6, saveKey:'beehiveClickerSaveV1_6' };
-
-/* ===== Worlds & Resources ===== */
-const CLASSIC = {
-  resources:{
-    nectar:{name:'Nectar',icon:'🌼'},
-    honey:{name:'Honey',icon:'🍯'},
-    pollen:{name:'Pollen',icon:'🟡'},
-    wax:{name:'Wax',icon:'🕯️'},
-    royalJelly:{name:'Royal Jelly',icon:'👑'},
-    propolis:{name:'Propolis',icon:'🟤'},
-  },
-  worlds:[
-    { key:'meadow', realm:'classic', name:'Meadow', tint:'#7cb518', flower:['#6fcf97','#2a9d8f'], unlock:{achCount:0, purchaseAP:0}, visible:true },
-    { key:'forest', realm:'classic', name:'Forest', tint:'#386641', flower:['#9ccc65','#2e7d32'], unlock:{achCount:10, purchaseAP:2}, visible:true },
-  ],
-};
-
-const REALM = {
-  worlds:[
-    { key:'grotto', realm:'realm', name:'Glowshroom Grotto', tint:'#3da35d', flower:['#9cffdd','#39b79a'], currency:'spore', currencyName:'Spore Tokens', unlock:{achCount:20, purchaseAP:5}, visible:true },
-    { key:'clock', realm:'realm', name:'Clockwork Orchard', tint:'#b08968', flower:['#ffcc80','#8d6e63'], currency:'cog', currencyName:'Cog Tokens', unlock:{achCount:80, purchaseAP:12}, visible:true },
-    { key:'starlight', realm:'realm', name:'Starlight Dunes', tint:'#7b9acc', flower:['#b3c9ff','#7986cb'], currency:'lumen', currencyName:'Lumen Tokens', unlock:{achCount:150, purchaseAP:20}, visible:false },
-  ],
-  resourceSets:{
-    grotto:{ mycel:{name:'Mycelium',icon:'🍄'}, glow:{name:'Glow',icon:'✨'}, spore:{name:'Spores',icon:'🌫️'}, fiber:{name:'Fibrils',icon:'🧵'} },
-    clock:{ sap:{name:'Sap Oil',icon:'🟠'}, cog:{name:'Cogs',icon:'⚙️'}, alloy:{name:'Alloy',icon:'🔩'}, plan:{name:'Blueprints',icon:'📘'} },
-    starlight:{ dust:{name:'Stardust',icon:'🌟'}, lumen:{name:'Lumen',icon:'💡'}, prism:{name:'Prisms',icon:'🔷'}, ion:{name:'Ions',icon:'🧪'} },
-  },
-  generators:{
-    grotto:[
-      { key:'sporeling',   name:'Sporeling',     baseRate:1,   baseCost:12,  costMult:1.17, produces:[{k:'mycel',r:1}], consumes:[], flavor:'Crawls and collects mycelium.' },
-      { key:'glowkeeper',  name:'Glowkeeper',    baseRate:0.6, baseCost:40,  costMult:1.2,  produces:[{k:'glow',r:0.5}],  consumes:[{k:'mycel',r:0.2}], flavor:'Turns mycelium into glow.' },
-      { key:'weaver',      name:'Weaver Mite',   baseRate:0.3, baseCost:90,  costMult:1.22, produces:[{k:'fiber',r:0.25}],consumes:[{k:'mycel',r:0.2}], flavor:'Spins fibrils for structures.' },
-      { key:'alchemist',   name:'Myco Alchemist',baseRate:0,   baseCost:200, costMult:1.25, produces:[], consumes:[{k:'glow',r:0.2},{k:'fiber',r:0.05}], flavor:'Transmutes into multipliers.' },
-      { key:'press',       name:'Spore Press',   baseRate:0,   baseCost:60,  costMult:1.2,  produces:[{k:'spore',r:0}],  consumes:[{k:'mycel',r:1}], flavor:'Converts mycelium → spores via Efficiency.' },
-    ],
-    clock:[
-      { key:'tapper',    name:'Tree Tapper', baseRate:1,   baseCost:18,  costMult:1.18, produces:[{k:'sap',r:1}],   consumes:[], flavor:'Collects sap oil.' },
-      { key:'gearling',  name:'Gearling',    baseRate:0.5, baseCost:60,  costMult:1.22, produces:[{k:'cog',r:0.5}], consumes:[{k:'sap',r:0.2}], flavor:'Assembles cogs from sap.' },
-      { key:'smelter',   name:'Smelter',     baseRate:0.25,baseCost:120, costMult:1.24, produces:[{k:'alloy',r:0.2}],consumes:[{k:'sap',r:0.3}], flavor:'Forges alloy plates.' },
-      { key:'drafter',   name:'Drafter',     baseRate:0,   baseCost:220, costMult:1.26, produces:[{k:'plan',r:0.01}],consumes:[{k:'cog',r:0.1}], flavor:'Slow trickle of blueprints.' },
-    ],
-    starlight:[
-      { key:'sifter',    name:'Star Sifter',  baseRate:1,   baseCost:25,  costMult:1.2,  produces:[{k:'dust',r:1}],  consumes:[], flavor:'Sifts stardust.' },
-      { key:'lumenor',   name:'Lumenor',      baseRate:0.5, baseCost:80,  costMult:1.22, produces:[{k:'lumen',r:0.5}],consumes:[{k:'dust',r:0.3}], flavor:'Condenses lumen from dust.' },
-      { key:'prismcut',  name:'Prism Cutter', baseRate:0.22,baseCost:140, costMult:1.24, produces:[{k:'prism',r:0.2}],consumes:[{k:'dust',r:0.4}], flavor:'Cuts prisms.' },
-      { key:'ionizer',   name:'Ionizer',      baseRate:0,   baseCost:260, costMult:1.28, produces:[{k:'ion',r:0.02}],consumes:[{k:'lumen',r:0.2}], flavor:'Ion yields for tech.' },
-    ],
-  }
-};
-
-/* ===== Classic per-world generator defs ===== */
-const CLASSIC_WORLD_GEN_DEFS = {
-  meadow: [
-    { key:'worker',  name:'Worker Bee',  flavor:'Base gatherer.', baseCost:10,  mult:1.15,  produces:[{k:'nectar', r:1}] },
-    { key:'forager', name:'Forager Bee', flavor:'Brings lots of nectar.', baseCost:25, mult:1.20, produces:[{k:'nectar', r:4}] },
-    { key:'press',   name:'Honey Press', flavor:'Converts Nectar→Honey (cap).', baseCost:40, mult:1.22, special:'press' },
-    { key:'nursery', name:'Nursery',     flavor:'A bit of Pollen.', baseCost:120, mult:1.25, produces:[{k:'pollen', r:0.2}] },
-    { key:'waxer',   name:'Wax Maker',   flavor:'Honey→Wax.', baseCost:180, mult:1.25, consumes:[{k:'honey', r:2}], produces:[{k:'wax', r:0.15}] },
-    { key:'rjvat',   name:'Royal Jelly Vat', flavor:'Very slow RJ.', baseCost:320, mult:1.28, produces:[{k:'royalJelly', r:0.01}] },
-    { key:'propol',  name:'Propolis Still',  flavor:'Some Propolis.', baseCost:260, mult:1.26, produces:[{k:'propolis', r:0.05}] },
-  ],
-  forest: [
-    { key:'scout',       name:'Forest Scout',    flavor:'Finds nectar in deep woods.', baseCost:30, mult:1.18, produces:[{k:'nectar', r:3}] },
-    { key:'tapperF',     name:'Tree Tapper',     flavor:'Extracts sticky resin.', baseCost:45, mult:1.20, produces:[{k:'resin', r:0.8}] },
-    { key:'amberMiner',  name:'Amber Miner',     flavor:'Mines ancient amber from deep forest.', baseCost:120, mult:1.26, produces:[{k:'amber', r:0.1}] },
-    { key:'forestPress', name:'Forest Press',    flavor:'Press cap (forest).', baseCost:60, mult:1.22, special:'pressForest' },
-    { key:'resinFilter', name:'Resin Filter',    flavor:'Consumes Resin to boost conversion.', baseCost:85, mult:1.24, special:'resinBoost' },
-    { key:'forestWaxer', name:'Forest Waxer',    flavor:'Resin→Wax.', baseCost:140, mult:1.25, consumes:[{k:'resin', r:0.3}], produces:[{k:'wax', r:0.2}] },
-    { key:'amberForge',  name:'Amber Forge',     flavor:'Converts Amber to powerful buffs.', baseCost:200, mult:1.28, consumes:[{k:'amber', r:0.5}], special:'amberBuff' },
-  ],
-};
+'use strict';
 
 /* ================= Helpers ================= */
 let RNG_SEED = META.rngSeed; function rng(){ let x = RNG_SEED |= 0; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; RNG_SEED = x; return (x>>>0)/4294967296; }
@@ -95,65 +20,6 @@ const div=(cls,html='')=>{ const d=document.createElement('div'); if(cls) d.clas
 function nowHMS(){ const t=new Date(); return t.toTimeString().slice(0,8); }
 function toast(msg,bad){ const chip=div('chip',msg); chip.style.position='fixed'; chip.style.left='50%'; chip.style.top='10px'; chip.style.transform='translateX(-50%)'; chip.style.zIndex='60'; chip.style.background=bad?'#331a1a':'#16231a'; document.body.appendChild(chip); setTimeout(()=>chip.remove(),2200); }
 
-/* ================= State ================= */
-const baseResClassic=['nectar','honey','pollen','wax','royalJelly','propolis'];
-const state = {
-  // ... existing state properties ...
-  
-
-  version:META.version,
-  realm:'classic',
-  worldKey:'meadow',
-  unlockedWorlds:['meadow'],
-  purchasedWorlds:{ meadow:true },
-  ap:0, ec:0, apSpent:0,
-  resources: Object.fromEntries(baseResClassic.map(k=>[k,0])),
-  totals:    Object.fromEntries(baseResClassic.map(k=>[k,0])),
-  worldCurrencies: {},
-  classicStates:{ meadow:null, forest:null },   // << NEW
-  realmStates:{ grotto:null, clock:null, starlight:null },
-  upgrades:{}, research:{}, apUpg:{}, ecUpg:{},
-  researchActive:null,
-  hives:[], bred:[], ach:{},
-  mods:{ globalMulti:1, convEff:DIFFICULTY.startConv, pressCap:DIFFICULTY.startPress, clickBase:1, critChance:0, critMult:2, tickMult:1, storage:1, offlineExtra:0, costCurve:0 },
-  realmMods:{ realmEff:1, realmConv:0.35, realmPress:2, realmTech:0 }, // defaults, per-world override in RS.mods
-  flags:{ keepQoL:false, autoPress:false, multiBuy:true, autohive:false, extraWorldSlot:false, formatQoL:false },
-  settings:{ autosave:true, reducedMotion:false, numFormat:'eng', FX:1, sfx:true, music:false, musicUrl:'' },
-  debug:{ enabled:false, prodLock:false, slowSwarm:1.0 },
-  lastSave: Date.now(),
-  lastSavedText:'—',
-  dirty:false,
-  stats:{ clicks:0 },
-  snapshot:null,
-  // Forest-specific resources
-  forestResources: { resin: 0, amber: 0 },
-  forestTotals: { resin: 0, amber: 0 },
-};
-
-function makeCombBoard(){ const W=7,H=5; const board=[]; for(let y=0;y<H;y++){ const row=[]; for(let x=0;x<W;x++){ row.push('empty'); } board.push(row);} return {W,H,cells:board}; }
-function initHives(){ if(state.hives.length) return; state.hives.push({ core:true, level:1, capacity:150, stored:0, role:{workers:5,builders:2,nurses:1}, eff:1, adjCap:0.20, tree:{}, board:makeCombBoard(), bees:8 }); }
-initHives();
-
-/* ====== Per-world Classic state ====== */
-function ensureClassicState(wk){
-  if(!state.classicStates[wk]){
-    const gens = Object.fromEntries((CLASSIC_WORLD_GEN_DEFS[wk]||[]).map(g=>[g.key,{level:0,boost:0}]));
-    state.classicStates[wk] = { gens };
-  }
-  return state.classicStates[wk];
-}
-
-/* ====== Realm state ====== */
-function ensureRealmState(worldKey){
-  if(!state.realmStates[worldKey]){
-    const set=REALM.resourceSets[worldKey];
-    const res=Object.fromEntries(Object.keys(set).map(k=>[k,0]));
-    const tot=Object.fromEntries(Object.keys(set).map(k=>[k,0]));
-    const gens=Object.fromEntries((REALM.generators[worldKey]||[]).map(g=>[g.key,{level:0,boost:0}]));
-    state.realmStates[worldKey]={ resources:res, totals:tot, gens, mods:{ realmEff:1, realmConv:0.35, realmPress:2, realmTech:0 } };
-  }
-  return state.realmStates[worldKey];
-}
 
 /* ================= Audio ================= */
 let audioEl = null;
@@ -458,118 +324,6 @@ function tickRealm(dt){
   });
 }
 
-/* ================= Upgrades / Research / AP ================= */
-const UPGRADES = {
-  global:[
-    {k:'g_click1',name:'Stronger Clicks',desc:'+1 click power',cost:{honey:50},effect:s=>s.mods.clickBase+=1},
-    {k:'g_press1',name:'Bigger Press',desc:'+1 press cap',cost:{honey:120},effect:s=>s.mods.pressCap+=1},
-    {k:'g_conv1',name:'Copper Filters',desc:'+5% conversion',cost:{honey:200},effect:s=>s.mods.convEff+=0.05},
-    {k:'g_crit1',name:'Lucky Bees',desc:'+2% crit chance',cost:{honey:300},effect:s=>s.mods.critChance+=0.02},
-    {k:'g_global1',name:'Golden Jars',desc:'+10% global',cost:{honey:800,pollen:5},effect:s=>s.mods.globalMulti*=1.10},
-    {k:'g_conv2',name:'Silver Filters',desc:'+10% conversion',cost:{honey:2200,wax:10},effect:s=>s.mods.convEff+=0.10, req:s=>Object.keys(state.upgrades).length>=4},
-  ],
-  hive:[
-    {k:'h_cap1',name:'Wider Combs',desc:'+50 hive capacity',cost:{wax:10,honey:100},effect:s=>s.hives.forEach(h=>h.capacity+=50)},
-    {k:'h_eff1',name:'Queen Discipline',desc:'+5% hive efficiency',cost:{royalJelly:1,honey:500},effect:s=>s.hives.forEach(h=>h.eff*=1.05)},
-    {k:'h_role1',name:'Train Builders',desc:'+1 Builder per hive',cost:{pollen:15,honey:400},effect:s=>s.hives.forEach(h=>h.role.builders=(h.role.builders||0)+1)},
-  ],
-  transmute:[
-    {k:'t_p2n',name:'Spin Pollen → Nectar',desc:'Convert 1 Pollen → 50 Nectar',cost:{pollen:1},onBuy:s=>{ addClassic('nectar',50); }},
-    {k:'t_w2h',name:'Melt Wax → Honey',desc:'Convert 1 Wax → 120 Honey',cost:{wax:1},onBuy:s=>{ addClassic('honey',120); }},
-  ],
-  research:[], // renderowane osobno
-  ap:[
-    {k:'ap_click', name:'AP: Click Might', desc:'+1 click permanently', ap:2, effect:s=>s.mods.clickBase+=1},
-    {k:'ap_global', name:'AP: Global +5%', desc:'+5% global permanently', ap:3, effect:s=>s.mods.globalMulti*=1.05},
-    {k:'ap_press', name:'AP: +1 press cap', desc:'+1 press cap permanently', ap:2, effect:s=>s.mods.pressCap+=1},
-  ],
-};
-
-/* Generator upgrades: pełne listy */
-const GEN_UPGRADES_CLASSIC = {
-  meadow: [
-    {k:'x_worker1', name:'Pollen Boots (Worker)', desc:'+25% worker output', cost:{honey:120,pollen:5}, effect:s=>{const CS=ensureClassicState('meadow'); CS.gens.worker.boost=(CS.gens.worker.boost||0)+0.25;}},
-    {k:'x_forager1', name:'Better Maps (Forager)', desc:'+25% forager output', cost:{honey:300,pollen:8}, effect:s=>{const CS=ensureClassicState('meadow'); CS.gens.forager.boost=(CS.gens.forager.boost||0)+0.25;}},
-    {k:'x_press1', name:'Hot Plates (Press)', desc:'+10% conversion', cost:{honey:600,wax:6}, effect:s=>{s.mods.convEff+=0.10;}},
-    {k:'x_nursery1', name:'Incubation Lamps (Nursery)', desc:'+25% Nursery output', cost:{honey:1000,pollen:30}, effect:s=>{const CS=ensureClassicState('meadow'); CS.gens.nursery.boost=(CS.gens.nursery.boost||0)+0.25;}},
-  ],
-  forest: [
-    {k:'x_scout1', name:'Trail Guides (Scout)', desc:'+25% Scout output', cost:{honey:280,pollen:8}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.scout.boost=(CS.gens.scout.boost||0)+0.25;}},
-    {k:'x_tapperF1', name:'Wide Spiles (Tapper)', desc:'+20% Resin output', cost:{honey:260}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.tapperF.boost=(CS.gens.tapperF.boost||0)+0.20;}},
-    {k:'x_resinf1', name:'Finer Mesh (Resin Filter)', desc:'+1% extra conversion / level', cost:{resin:30,honey:700}, effect:s=>{/* bonus w mechanice, lvl już działa */}},
-          {k:'x_fwax1', name:'Hot Molds (Forest Waxer)', desc:'+15% Wax output', cost:{resin:40,honey:900}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.forestWaxer.boost=(CS.gens.forestWaxer.boost||0)+0.15;}},
-      {k:'x_amber1', name:'Crystal Picks (Amber Miner)', desc:'+20% Amber output', cost:{amber:20,honey:1200}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.amberMiner.boost=(CS.gens.amberMiner.boost||0)+0.20;}},
-      {k:'x_amberForge1', name:'Ancient Runes (Amber Forge)', desc:'+15% Amber Forge efficiency', cost:{amber:40,honey:1500}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.amberForge.boost=(CS.gens.amberForge.boost||0)+0.15;}},
-  ],
-};
-
-const GEN_UPGRADES_REALM = {
-  grotto: [
-    {k:'rx_sporeling1', name:'Hardened Spores', desc:'+20% Sporeling output', cost:{mycel:120}, effect:s=>{const RS=ensureRealmState('grotto'); RS.gens.sporeling.boost=(RS.gens.sporeling.boost||0)+0.20;}},
-    {k:'rx_glow1', name:'Reflective Mats', desc:'+15% Glowkeeper output', cost:{mycel:80,glow:40}, effect:s=>{const RS=ensureRealmState('grotto'); RS.gens.glowkeeper.boost=(RS.gens.glowkeeper.boost||0)+0.15;}},
-    {k:'rx_fiber1', name:'Reinforced Webbing', desc:'+10% Weaver output', cost:{fiber:60,glow:60}, effect:s=>{const RS=ensureRealmState('grotto'); RS.gens.weaver.boost=(RS.gens.weaver.boost||0)+0.10;}},
-  ],
-  clock: [
-    {k:'rx_tapper1', name:'Wide Taps', desc:'+20% Tree Tapper output', cost:{sap:140}, effect:s=>{const RS=ensureRealmState('clock'); RS.gens.tapper.boost=(RS.gens.tapper.boost||0)+0.20;}},
-    {k:'rx_gearling1', name:'Balanced Teeth', desc:'+15% Gearling output', cost:{cog:80,sap:60}, effect:s=>{const RS=ensureRealmState('clock'); RS.gens.gearling.boost=(RS.gens.gearling.boost||0)+0.15;}},
-    {k:'rx_smelter1', name:'Insulated Furnaces', desc:'+15% Smelter output', cost:{alloy:40,sap:80}, effect:s=>{const RS=ensureRealmState('clock'); RS.gens.smelter.boost=(RS.gens.smelter.boost||0)+0.15;}},
-  ],
-  starlight: [
-    {k:'rx_sifter1', name:'Fine Sieves', desc:'+20% Star Sifter output', cost:{dust:160}, effect:s=>{const RS=ensureRealmState('starlight'); RS.gens.sifter.boost=(RS.gens.sifter.boost||0)+0.20;}},
-    {k:'rx_lumenor1', name:'Polished Mirrors', desc:'+15% Lumenor output', cost:{lumen:60,dust:80}, effect:s=>{const RS=ensureRealmState('starlight'); RS.gens.lumenor.boost=(RS.gens.lumenor.boost||0)+0.15;}},
-    {k:'rx_prism1', name:'Prismatic Cutters', desc:'+10% Prism Cutter output', cost:{prism:20,dust:100}, effect:s=>{const RS=ensureRealmState('starlight'); RS.gens.prismcut.boost=(RS.gens.prismcut.boost||0)+0.10;}},
-  ],
-};
-
-const WORLD_UPGRADES = {
-  classic: {
-    meadow: [
-      {k:'w_meadow1', name:'Meadow Richness', desc:'+25% nectar (Meadow)', cost:{honey:250,pollen:10}, effect:s=>{/*click buff*/ s.mods.clickBase+=0.5;}},
-      {k:'w_meadow2', name:'Sunny Bloom', desc:'+5% global (Meadow)', cost:{honey:900,wax:10}, effect:s=>{s.mods.globalMulti*=1.05;}},
-      {k:'w_meadow3', name:'Prosperous Grounds', desc:'+10% global (Meadow)', cost:{honey:1800,pollen:25}, effect:s=>{s.mods.globalMulti*=1.10;}},
-      {k:'w_meadow4', name:'Press Springs', desc:'+1 Press cap (global)', cost:{wax:12,honey:1400}, effect:s=>{s.mods.pressCap+=1;}},
-    ],
-    forest: [
-      {k:'w_forest1', name:'Forest Saps', desc:'+10% global (Forest)', cost:{honey:800,wax:10}, effect:s=>{s.mods.globalMulti*=1.10;}},
-      {k:'w_forest2', name:'Resin Guides', desc:'+1 Press cap (Forest)', cost:{honey:1200,pollen:20}, effect:s=>{/* global cap OK */ s.mods.pressCap+=1;}},
-      {k:'w_forest3', name:'Forager Trails', desc:'+25% Scout output', cost:{honey:1500,pollen:20}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.scout.boost=(CS.gens.scout.boost||0)+0.25;}},
-      {k:'w_forest4', name:'Sticky Frames', desc:'+15% Forest Wax output', cost:{honey:1600,wax:8}, effect:s=>{const CS=ensureClassicState('forest'); CS.gens.forestWaxer.boost=(CS.gens.forestWaxer.boost||0)+0.15;}},
-      {k:'w_forest5', name:'Refined Filters', desc:'+10% Resin Filter efficacy', cost:{resin:80,honey:1800}, effect:s=>{/* lepszy bonus: +0.5%/lvl globalnie */ s.mods.convEff+=0.005;}},
-      {k:'w_forest6', name:'Amber Resonance', desc:'+25% Amber Forge efficiency', cost:{amber:50,honey:2500}, effect:s=>{/* bonus w mechanice */}},
-    ],
-  },
-  realm: {
-    grotto: [
-      {k:'rw_grotto_gather1', name:'Grotto Workforce I', desc:'+25% Sporeling output', cost:{mycel:100,glow:20}, effect:s=>{ const RS=ensureRealmState('grotto'); RS.gens.sporeling.boost=(RS.gens.sporeling.boost||0)+0.25; }},
-      {k:'rw_grotto2', name:'Biolum Lattices', desc:'+10% Realm Efficiency (Grotto)', cost:{glow:120,fiber:40}, effect:s=>{const R=ensureRealmState('grotto'); R.mods.realmEff=(R.mods.realmEff||1)*1.10;}},
-      {k:'rw_grotto3', name:'Firm Hyphae', desc:'-10% Mycelium consumption (press)', cost:{mycel:220}, effect:s=>{const R=ensureRealmState('grotto'); R.mods.realmPress=(R.mods.realmPress||state.realmMods.realmPress)*0.9;}},
-    ],
-    clock: [
-      {k:'rw_clock_gather1', name:'Clock Lubricants', desc:'+25% Tree Tapper output', cost:{sap:150}, effect:s=>{ const RS=ensureRealmState('clock'); RS.gens.tapper.boost=(RS.gens.tapper.boost||0)+0.25; }},
-      {k:'rw_clock2', name:'Precision Jigs', desc:'+15% Cog output', cost:{sap:120,cog:60}, effect:s=>{const R=ensureRealmState('clock'); R.gens.gearling.boost=(R.gens.gearling.boost||0)+0.15;}},
-      {k:'rw_clock3', name:'Efficient Smelters', desc:'+15% Alloy output', cost:{alloy:40,sap:200}, effect:s=>{const R=ensureRealmState('clock'); R.gens.smelter.boost=(R.gens.smelter.boost||0)+0.15;}},
-    ],
-    starlight: [
-      {k:'rw_star_gather1', name:'Dune Scouts', desc:'+25% Star Sifter output', cost:{dust:200}, effect:s=>{ const RS=ensureRealmState('starlight'); RS.gens.sifter.boost=(RS.gens.sifter.boost||0)+0.25; }},
-      {k:'rw_star2', name:'Focused Lenses', desc:'+15% Lumen output', cost:{dust:220,lumen:60}, effect:s=>{const R=ensureRealmState('starlight'); R.gens.lumenor.boost=(R.gens.lumenor.boost||0)+0.15;}},
-      {k:'rw_star3', name:'Crystal Geometry', desc:'+10% Realm Efficiency (Starlight)', cost:{prism:20,dust:300}, effect:s=>{const R=ensureRealmState('starlight'); R.mods.realmEff=(R.mods.realmEff||1)*1.10;}},
-    ],
-  }
-};
-
-/* ================= Research ================= */
-function hasUpgrades(n){ return Object.keys(state.upgrades).length>=n; }
-
-const RESEARCH = [
-  {id:'lab', name:'Tiny Research Lab', desc:'Unlocks research UI and tiered content.', time:6, cost:{pollen:20,honey:800}, prereq:[], on:s=>{s.research.lab=true}},
-  {id:'qol', name:'Quality of Life', desc:'Autosave tweaks, number format tools.', time:5, cost:{pollen:40}, prereq:['lab'], on:s=>{s.flags.formatQoL=true}},
-  {id:'transmute+', name:'Advanced Transmute', desc:'Adds extra recipes.', time:7, cost:{pollen:80,wax:6}, prereq:['lab'], on:s=>{
-    UPGRADES.transmute.push({k:'t_h2w',name:'Condense Honey → Wax',desc:'600 Honey → 5 Wax',cost:{honey:600},onBuy:st=>addClassic('wax',5)});
-    UPGRADES.transmute.push({k:'t_r2h',name:'Refine Resin → Honey',desc:'10 Resin → 220 Honey',cost:{resin:10},onBuy:st=>addClassic('honey',220)});
-  }},
-  // Forest-tech
-  {id:'resin_science1', name:'Resin Science I', desc:'+0.5% Press conversion if Resin Filter present', time:8, cost:{pollen:120, honey:1600}, prereq:['lab'], on:s=>{ s.mods.convEff += 0.005; }},
-];
 
 /* ================= Mixed-cost helpers ================= */
 function canAfford(cost){ for(const [k,v] of Object.entries(cost||{})){ if((state.resources[k]||0) < v) return false; } return true; }
@@ -644,7 +398,7 @@ function tickResearch(){
   }
 }
 function bindTabs(){
-  const all = ['global','world','hive','generator','transmute','research','ap'];
+  const all = UPGRADE_TABS;
   els('.tab').forEach(b=>{
     b.onclick=()=>{
       els('.tab').forEach(x=>x.classList.remove('active'));
@@ -657,16 +411,16 @@ function bindTabs(){
       renderUpgrades();
     };
   });
-  const first = els('.tab').find(x=>x.dataset.tab==='global') || els('.tab')[0];
-  if(first){ 
-    first.click(); 
+  const first = els('.tab').find(x=>x.dataset.tab===UPGRADE_TABS[0]) || els('.tab')[0];
+  if(first){
+    first.click();
   }
 }
 
 
 
 function renderUpgrades(){
-  const tabs=['global','world','hive','generator','transmute','research','ap'];
+  const tabs=UPGRADE_TABS;
   
   // Find which tab is currently visible
   let activeTab = null;
@@ -679,11 +433,11 @@ function renderUpgrades(){
   }
   
   if(!activeTab) {
-    activeTab = 'global';
-    // Show global tab by default
+    activeTab = tabs[0];
+    // Show first tab by default
     tabs.forEach(t=>{
       const box = el('#upg-'+t);
-      if(box) box.hidden = (t !== 'global');
+      if(box) box.hidden = (t !== activeTab);
     });
   }
   
@@ -1311,4 +1065,3 @@ function init(){
 
 init();
 
-})(); // IIFE end
